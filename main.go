@@ -19,11 +19,11 @@ import (
 
 type spotVar struct{
 	id int
-	status bool
+	status bool 
 	x int
 	y int
 }
-
+ var confirmButton = false;
 var spots []spotVar;
 
 var curFrame image.Image;
@@ -45,10 +45,10 @@ func appRunner(){
 	
 
 	a := app.New()
-	w := a.NewWindow("Frank")
+	w := a.NewWindow("Park Pallette")
 	w.Resize(fyne.NewSize(750, 350))
 
-	text := container.NewCenter( widget.NewLabel("Frank"))
+	text := container.NewCenter( widget.NewLabel("--Park Pallette--"))
 	
 
 	input := widget.NewEntry()
@@ -64,17 +64,21 @@ func appRunner(){
 
 	webcam, _ := gocv.VideoCaptureDevice(0)
 	img := gocv.NewMat()
-
+	/*
 	webCamR(img,webcam)
 
 	image :=  canvas.NewImageFromImage(curFrame)
 	image.SetMinSize(fyne.NewSize(100,100))
-	image.FillMode = canvas.ImageFillContain
+	image.FillMode = canvas.ImageFillContain*/
+
+	button := widget.NewButton("confirm", func() {
+		confirmButton = true
+	})
 
 
 	
 
-	grid := container.NewGridWithRows(2,inputCon,text)
+	grid := container.NewGridWithRows(2,inputCon,button)
 
 
 
@@ -83,7 +87,7 @@ func appRunner(){
 
 
 
-	content := container.NewGridWithColumns(2,image,grid)
+	content := container.NewGridWithColumns(1,grid)
 
 
 	w.SetContent(content)
@@ -92,17 +96,41 @@ func appRunner(){
 	
 	
 	
+	setup := false
 	
 	
 	go func(){
 		
+		
 		for{
+			spotText := ""
 
 			// this chunk o' code checks if the number of spots has been filled out
-			if(input.Text != "Number of spots"){
+			if(confirmButton){
 				inputT ,_ = strconv.Atoi(input.Text)
 				}else {inputT = 0}
 			if(inputT !=0){
+				if (!setup){
+					
+					
+
+					for i := 1; i <= inputT; i++{
+						var s spotVar
+						
+						s.id = i
+						spots = append(spots,s)
+					}
+
+
+				}
+			for i := 1; i <= inputT; i++{
+				spotText += ("\nID: " + strconv.Itoa(spots[i-1].id) + "\n -Active: " + strconv.FormatBool(spots[i-1].status) + "\n -Coordinates: " + strconv.Itoa(spots[i-1].x) + ","  + strconv.Itoa(spots[i-1].y)+"\n")
+			}
+			
+			text = container.NewCenter( widget.NewLabel(spotText))
+
+			
+				
 
 
 
@@ -111,11 +139,11 @@ func appRunner(){
 
 			
 			webCamR(img,webcam)
-			image = canvas.NewImageFromImage(curFrame)
+			image := canvas.NewImageFromImage(curFrame)
 			image.SetMinSize(fyne.NewSize(200,200))
 			image.FillMode = canvas.ImageFillContain
 		
-			content = container.NewGridWithColumns(2,image,grid)
+			content = container.NewGridWithColumns(2,image,text)
 		
 			
 			w.SetContent(content)
