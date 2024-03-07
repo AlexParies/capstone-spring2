@@ -213,6 +213,7 @@ func main() {
 
 
 				w.SetContent(content)
+				updateApi(spots)
 			}
 			}
 		}
