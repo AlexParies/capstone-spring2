@@ -1,10 +1,11 @@
 package main
+
 //use this for whatever
 import (
-	"fmt"
-	"os"
-	"image/color"
 	"bytes"
+	"fmt"
+	"image/color"
+	"os"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
@@ -16,8 +17,6 @@ import (
 	"strconv"
 
 	"gocv.io/x/gocv"
-
-
 )
 
 type spotVar struct {
@@ -56,80 +55,61 @@ func main() {
 
 			webcam.Read(&img)
 
+			if setupFin {
+				//H: 147 S: 189 V: 196
+				//bgr 196 51 184
 
+				iRows, iColumns := img.Rows(), img.Cols()
+				lower := gocv.NewMatWithSizeFromScalar(gocv.NewScalar(137, 100, 100, 0.0), iRows, iColumns, gocv.MatTypeCV8UC3)
+				upper := gocv.NewMatWithSizeFromScalar(gocv.NewScalar(157, 255, 255, 0.0), iRows, iColumns, gocv.MatTypeCV8UC3)
 
+				gocv.CvtColor(img, &hsv, gocv.ColorBGRToHSV)
 
+				gocv.InRange(hsv, lower, upper, &mask)
 
-			if(setupFin){
-			//H: 147 S: 189 V: 196
-			//bgr 196 51 184
+				kernel := gocv.GetStructuringElement(gocv.MorphRect, image.Pt(3, 3))
+				gocv.Dilate(mask, &mask, kernel)
 
+				if temp {
+					contours = gocv.FindContours(mask, gocv.RetrievalExternal, gocv.ChainApproxSimple)
+					for g := 0; g < inputT; g++ {
 
+						spots[g].x = gocv.MinAreaRect(contours.At(g)).Center.X
+						spots[g].y = gocv.MinAreaRect(contours.At(g)).Center.Y
+						fmt.Println(spots[g])
 
-
-
-			iRows, iColumns := img.Rows(), img.Cols()
-			lower := gocv.NewMatWithSizeFromScalar(gocv.NewScalar(137, 100, 100, 0.0), iRows, iColumns, gocv.MatTypeCV8UC3)
-			upper := gocv.NewMatWithSizeFromScalar(gocv.NewScalar(157, 255, 255, 0.0), iRows, iColumns, gocv.MatTypeCV8UC3)
-
-			gocv.CvtColor(img,&hsv,gocv.ColorBGRToHSV)
-
-			gocv.InRange(hsv,lower,upper,&mask)
-
-
-			kernel := gocv.GetStructuringElement(gocv.MorphRect, image.Pt(3, 3))
-			gocv.Dilate(mask, &mask, kernel)
-
-
-
-
-
-			if(temp){
-				contours = gocv.FindContours(mask, gocv.RetrievalExternal, gocv.ChainApproxSimple)
-				for g := 0; g < inputT; g++ {
-
-					spots[g].x = gocv.MinAreaRect(contours.At(g)).Center.X
-					spots[g].y = gocv.MinAreaRect(contours.At(g)).Center.Y
-					fmt.Println(spots[g])
-
-				}
-				temp = false
-			}
-
-			for  i := 0; i < spotCount; i++ {
-				tempMat := mask.Region(image.Rect(spots[i].x-1, spots[i].y-1,spots[i].x, spots[i].y))
-				tempI:= tempMat.ToBytes()
-
-				 ahsbsh:= []byte{0}
-
-				if bytes.Equal(tempI,ahsbsh){
-					spots[i].status = false
-
-				}else{
-					spots[i].status = true
+					}
+					temp = false
 				}
 
+				for i := 0; i < spotCount; i++ {
+					tempMat := mask.Region(image.Rect(spots[i].x-1, spots[i].y-1, spots[i].x, spots[i].y))
+					tempI := tempMat.ToBytes()
 
+					ahsbsh := []byte{0}
 
-				if spots[i].status{
-				gocv.Circle(&img, image.Pt(spots[i].x, spots[i].y), 10, color.RGBA{0, 255, 0, 0}, 3)
-				}else{
-				gocv.Circle(&img, image.Pt(spots[i].x, spots[i].y), 10, color.RGBA{255, 0, 0, 0}, 3)
-				c1 <- " "
+					if bytes.Equal(tempI, ahsbsh) {
+						spots[i].status = false
+
+					} else {
+						spots[i].status = true
+					}
+
+					if spots[i].status {
+						gocv.Circle(&img, image.Pt(spots[i].x, spots[i].y), 10, color.RGBA{0, 255, 0, 0}, 3)
+
+					} else {
+						gocv.Circle(&img, image.Pt(spots[i].x, spots[i].y), 10, color.RGBA{255, 0, 0, 0}, 3)
+						c1 <- " "
+
+					}
 
 				}
 
-			}
-
-			gocv.DrawContours(&img,contours,-1,color.RGBA{0, 255, 0, 255},1)
-
+				gocv.DrawContours(&img, contours, -1, color.RGBA{0, 255, 0, 255}, 1)
 
 			}
-			curFrame,_ = img.ToImage()
-
-
-
-
+			curFrame, _ = img.ToImage()
 
 		}
 	}()
@@ -148,6 +128,8 @@ func main() {
 		inputT, _ = strconv.Atoi(input.Text)
 		if inputT > 0 {
 			setup <- true
+		} else {
+			input.SetPlaceHolder("Invalid")
 		}
 	})
 
@@ -191,30 +173,29 @@ func main() {
 		}
 	}()
 
-	go func(){ //this is the screen after setup
-		       //pretty much the same as the one above
-		for{
-			if(setupFin){
-			spotText := ""
+	go func() { //this is the screen after setup
+		//pretty much the same as the one above
+		for {
+			if setupFin {
+				spotText := ""
 
-			select {
-			case wow := <-c1:
+				select {
+				case wow := <-c1:
 
-				for v := 1; v <= inputT; v++ {
-					spotText += ("\nID:" +wow + strconv.Itoa(spots[v-1].id) + "\n -Active: " + strconv.FormatBool(spots[v-1].status) + "\n -Coordinates: " + strconv.Itoa(spots[v-1].x) + "," + strconv.Itoa(spots[v-1].y) + "\n")
+					for v := 1; v <= inputT; v++ {
+						spotText += ("\nID:" + wow + strconv.Itoa(spots[v-1].id) + "\n -Active: " + strconv.FormatBool(spots[v-1].status) + "\n -Coordinates: " + strconv.Itoa(spots[v-1].x) + "," + strconv.Itoa(spots[v-1].y) + "\n")
+					}
+
+					text := container.NewCenter(widget.NewLabel(spotText))
+					image := canvas.NewImageFromImage(curFrame)
+					image.SetMinSize(fyne.NewSize(200, 200))
+					image.FillMode = canvas.ImageFillContain
+
+					content = container.NewGridWithColumns(2, image, text)
+
+					w.SetContent(content)
+					//go callme(spots)
 				}
-
-				text := container.NewCenter(widget.NewLabel(spotText))
-				image := canvas.NewImageFromImage(curFrame)
-				image.SetMinSize(fyne.NewSize(200,200))
-				image.FillMode = canvas.ImageFillContain
-
-				content = container.NewGridWithColumns(2,image,text)
-
-
-				w.SetContent(content)
-				updateApi(spots)
-			}
 			}
 		}
 	}()
